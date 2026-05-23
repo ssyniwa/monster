@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import time
 import os
+import json  # 💾 ファイル保存のために追加
 
 # 1. ページの設定
 st.set_page_config(page_title="混沌のキメラ・ブリーダー", page_icon="🧬", layout="centered")
@@ -9,7 +10,7 @@ st.set_page_config(page_title="混沌のキメラ・ブリーダー", page_icon=
 st.title("🧬 混沌のキメラ・ブリーダー")
 st.caption("禁忌の錬金術で、世界に1体だけのハイブリッドモンスターを生み出せ！")
 
-# 2. ベースとなる素材モンスターのデータ（🔮スキル "skills" を追加）
+# 2. ベースとなる素材モンスターのデータ
 BASE_MONSTERS = {
     "サンダーバード": {
         "hp": 100, "atk": 60, "spd": 90, "img_key": "bird", 
@@ -38,14 +39,29 @@ BASE_MONSTERS = {
     },
 }
 
-# 3. セッション状態の初期化（📖キメラ図鑑リスト "chimera_list" を追加）
+# 💾 データのセーブ・ロード用関数
+SAVE_FILE = "saved_chimeras.json"
+
+def load_chimeras():
+    """ファイルを読み込んでリストを返す。ファイルがない場合は空のリストを返す"""
+    if os.path.exists(SAVE_FILE):
+        with open(SAVE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def save_chimeras(chimera_list):
+    """キメラのリストをファイルに保存する"""
+    with open(SAVE_FILE, "w", encoding="utf-8") as f:
+        json.dump(chimera_list, f, ensure_ascii=False, indent=4)
+
+# 3. セッション状態の初期化（セーブファイルからの読み込みに対応）
 if "chimera_list" not in st.session_state:
-    st.session_state.chimera_list = [] # 作成したキメラを辞書形式で溜めていくリスト
+    st.session_state.chimera_list = load_chimeras()  # 🔄 起動時に保存データをロード
 
 if "current_chimera" not in st.session_state:
-    st.session_state.current_chimera = None # 現在画面に表示する最新のキメラデータ
+    st.session_state.current_chimera = None
 
-# タブ機能を使って「研究室（合成）」と「キメラ図鑑（閲覧）」を分ける
+# タブ機能
 tab1, tab2 = st.tabs(["🧪 遺伝子融合研究室", "📖 混沌のキメラ図鑑"])
 
 # ==========================================
@@ -64,7 +80,6 @@ with tab1:
         else:
             st.write("🖼️ (画像準備中)")
         st.info(BASE_MONSTERS[parent_a]["desc"])
-        # スキル表示
         st.caption(f"持ちスキル: {', '.join(BASE_MONSTERS[parent_a]['skills'])}")
 
     with col2:
@@ -75,7 +90,6 @@ with tab1:
         else:
             st.write("🖼️ (画像準備中)")
         st.info(BASE_MONSTERS[parent_b]["desc"])
-        # スキル表示
         st.caption(f"持ちスキル: {', '.join(BASE_MONSTERS[parent_b]['skills'])}")
 
     st.write("---")
@@ -105,7 +119,6 @@ with tab1:
             c_atk = int((data_a["atk"] + data_b["atk"]) / 2 * random.uniform(0.8, 1.3))
             c_spd = int((data_a["spd"] + data_b["spd"]) / 2 * random.uniform(0.8, 1.3))
             
-            # 特徴の詳細（親の組み合わせによってテキストが豊かになるよう調整）
             lines = [
                 f"{parent_a}の特性と、{parent_b}の生態が奇跡の融合を果たした姿。",
                 f"見た目は{parent_b}の面影を残すが、{parent_a}の恐ろしいオーラを放っている。",
@@ -113,21 +126,17 @@ with tab1:
             ]
             c_desc = random.choice(lines)
             
-            # 🔮 スキルの継承ロジック（双方の親からランダムに1つずつ引き継ぐ）
             skill_from_a = random.choice(data_a["skills"])
             skill_from_b = random.choice(data_b["skills"])
             c_skills = [skill_from_a, skill_from_b]
             
-            # 画像パスの決定
             keys = sorted([data_a["img_key"], data_b["img_key"]])
             c_img = f"images/{keys[0]}_{keys[1]}.png"
             
-            # 新しいキメラデータを辞書オブジェクトとして作成
             new_chimera = {
                 "name": c_name,
                 "hp": c_hp,
                 "atk": c_atk,
-                "spd": c_spd, # 元のコードの変数名 c_spd に合わせて修正
                 "spd": c_spd,
                 "desc": c_desc,
                 "skills": c_skills,
@@ -135,13 +144,15 @@ with tab1:
                 "parents": f"{parent_a} × {parent_b}"
             }
             
-            # セッション状態に保存（最新の表示用 ＆ 図鑑リストへの追加）
             st.session_state.current_chimera = new_chimera
             st.session_state.chimera_list.append(new_chimera)
             
+            # 💾 ファイルに即座に書き込んで保存
+            save_chimeras(st.session_state.chimera_list)
+            
             st.balloons()
 
-    # 合成結果のリアルタイム表示（ボタンを押した直後）
+    # 合成結果のリアルタイム表示
     if st.session_state.current_chimera:
         chimera = st.session_state.current_chimera
         st.write("---")
@@ -170,19 +181,13 @@ with tab2:
     if not st.session_state.chimera_list:
         st.info("まだキメラが登録されていません。研究室で合成を行ってください！")
     else:
-        # セレクトボックス用に「登録番号: キメラ名」のリストを作る
-        chimera_options = [f"{i+1}: {c['name']}" for i , c in enumerate(st.session_state.chimera_list)]
-        
-        # ユーザーが図鑑から選ぶセレクトボックス
+        chimera_options = [f"{i+1}: {c['name']}" for i, c in enumerate(st.session_state.chimera_list)]
         selected_index = st.selectbox("閲覧するキメラを選択", range(len(chimera_options)), format_func=lambda x: chimera_options[x])
-        
-        # 選択されたキメラのデータを取得して表示
         selected_chimera = st.session_state.chimera_list[selected_index]
         
         st.write("---")
         st.subheader(selected_chimera["name"])
         
-        # 図鑑用のレイアウト（左に画像、右にステータスやスキル）
         v_col1, v_col2 = st.columns([1, 1])
         
         with v_col1:
@@ -198,3 +203,12 @@ with tab2:
             st.write(f"**🧬 配合元:** {selected_chimera['parents']}")
             st.write(f"**🔮 継承スキル:** `{', '.join(selected_chimera['skills'])}`")
             st.markdown(f"> {selected_chimera['desc']}")
+        
+        # ⚠️ 動画映え＆親切設計：図鑑リセットボタン（データを全消去したい時のため）
+        st.write("---")
+        if st.button("🗑️ 図鑑の記録をすべて抹消する", type="secondary"):
+            if os.path.exists(SAVE_FILE):
+                os.remove(SAVE_FILE)
+            st.session_state.chimera_list = []
+            st.session_state.current_chimera = None
+            st.rerun()
