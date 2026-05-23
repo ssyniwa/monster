@@ -2,7 +2,7 @@ import streamlit as st
 import random
 import time
 import os
-import json  # 💾 ファイル保存のために追加
+import json
 
 # 1. ページの設定
 st.set_page_config(page_title="混沌のキメラ・ブリーダー", page_icon="🧬", layout="centered")
@@ -43,33 +43,30 @@ BASE_MONSTERS = {
 SAVE_FILE = "saved_chimeras.json"
 
 def load_chimeras():
-    """ファイルを読み込んでリストを返す。ファイルがない場合は空のリストを返す"""
     if os.path.exists(SAVE_FILE):
         with open(SAVE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
 def save_chimeras(chimera_list):
-    """キメラのリストをファイルに保存する"""
     with open(SAVE_FILE, "w", encoding="utf-8") as f:
         json.dump(chimera_list, f, ensure_ascii=False, indent=4)
 
-# 3. セッション状態の初期化（セーブファイルからの読み込みに対応）
+# 3. セッション状態の初期化
 if "chimera_list" not in st.session_state:
-    st.session_state.chimera_list = load_chimeras()  # 🔄 起動時に保存データをロード
+    st.session_state.chimera_list = load_chimeras()
 
 if "current_chimera" not in st.session_state:
     st.session_state.current_chimera = None
 
-# タブ機能
-tab1, tab2 = st.tabs(["🧪 遺伝子融合研究室", "📖 混沌のキメラ図鑑"])
+# ✨ 3つのタブに拡張（闘技場を追加）
+tab1, tab2, tab3 = st.tabs(["🧪 遺伝子融合研究室", "📖 混沌のキメラ図鑑", "⚔️ 混沌の闘技場"])
 
 # ==========================================
 # タブ1：遺伝子融合研究室（合成画面）
 # ==========================================
 with tab1:
     st.subheader("🧪 配合するベースを選択")
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -97,7 +94,6 @@ with tab1:
         if parent_a == parent_b:
             st.warning("同じモンスター同士では、混沌のエネルギーが拒絶反応を起こします！別の種類を選んでください。")
         else:
-            # 🎬 カウントダウン演出
             progress_text = "遺伝子を分解中..."
             my_bar = st.progress(0, text=progress_text)
             for percent_complete in range(100):
@@ -108,7 +104,6 @@ with tab1:
                     my_bar.progress(percent_complete, text="魂の定着を確認...")
             my_bar.empty()
 
-            # 🧠 合成ロジック
             name_a = parent_a[:3]
             name_b = parent_b[-3:]
             c_name = f"【混沌】{name_a}{name_b}"
@@ -146,18 +141,13 @@ with tab1:
             
             st.session_state.current_chimera = new_chimera
             st.session_state.chimera_list.append(new_chimera)
-            
-            # 💾 ファイルに即座に書き込んで保存
             save_chimeras(st.session_state.chimera_list)
-            
             st.balloons()
 
-    # 合成結果のリアルタイム表示
     if st.session_state.current_chimera:
         chimera = st.session_state.current_chimera
         st.write("---")
         st.header(f"👾 新種誕生：{chimera['name']}")
-        
         if os.path.exists(chimera["img"]):
             st.image(chimera["img"], caption=chimera["name"], width=400)
         else:
@@ -167,7 +157,6 @@ with tab1:
         m_col1.metric("❤️ HP", chimera["hp"])
         m_col2.metric("⚔️ 攻撃力", chimera["atk"])
         m_col3.metric("⚡ すばやさ", chimera["spd"])
-        
         st.markdown(f"**🧬 配合元:** {chimera['parents']}")
         st.markdown(f"**🔮 継承スキル:** `{', '.join(chimera['skills'])}`")
         st.markdown(f"> {chimera['desc']}")
@@ -177,25 +166,21 @@ with tab1:
 # ==========================================
 with tab2:
     st.subheader("📖 これまでに誕生したキメラ")
-    
     if not st.session_state.chimera_list:
         st.info("まだキメラが登録されていません。研究室で合成を行ってください！")
     else:
         chimera_options = [f"{i+1}: {c['name']}" for i, c in enumerate(st.session_state.chimera_list)]
-        selected_index = st.selectbox("閲覧するキメラを選択", range(len(chimera_options)), format_func=lambda x: chimera_options[x])
+        selected_index = st.selectbox("閲覧するキメラを選択", range(len(chimera_options)), format_func=lambda x: chimera_options[x], key="view_select")
         selected_chimera = st.session_state.chimera_list[selected_index]
         
         st.write("---")
         st.subheader(selected_chimera["name"])
-        
         v_col1, v_col2 = st.columns([1, 1])
-        
         with v_col1:
             if os.path.exists(selected_chimera["img"]):
                 st.image(selected_chimera["img"], use_container_width=True)
             else:
                 st.write("🖼️ (画像準備中)")
-                
         with v_col2:
             st.write(f"**❤️ HP:** {selected_chimera['hp']}")
             st.write(f"**⚔️ 攻撃力:** {selected_chimera['atk']}")
@@ -204,7 +189,6 @@ with tab2:
             st.write(f"**🔮 継承スキル:** `{', '.join(selected_chimera['skills'])}`")
             st.markdown(f"> {selected_chimera['desc']}")
         
-        # ⚠️ 動画映え＆親切設計：図鑑リセットボタン（データを全消去したい時のため）
         st.write("---")
         if st.button("🗑️ 図鑑の記録をすべて抹消する", type="secondary"):
             if os.path.exists(SAVE_FILE):
@@ -212,3 +196,104 @@ with tab2:
             st.session_state.chimera_list = []
             st.session_state.current_chimera = None
             st.rerun()
+
+# ==========================================
+# ⚔️ タブ3：混沌の闘技場（自動戦闘シミュレーション機能）
+# ==========================================
+with tab3:
+    st.subheader("⚔️ キメラコロシアム")
+    
+    if len(st.session_state.chimera_list) < 2:
+        st.warning("バトルを始めるには、図鑑に最低2体以上のキメラが必要です！もっと合成して仲間を増やしましょう。")
+    else:
+        st.write("対戦させる2体のキメラを選択してください。")
+        
+        b_col1, b_col2 = st.columns(2)
+        chimera_options = [f"{i+1}: {c['name']}" for i, c in enumerate(st.session_state.chimera_list)]
+        
+        with b_col1:
+            p1_idx = st.selectbox("🔴 プレイヤー1 (先攻側)", range(len(chimera_options)), format_func=lambda x: chimera_options[x], index=0)
+            p1 = st.session_state.chimera_list[p1_idx]
+            if os.path.exists(p1["img"]):
+                st.image(p1["img"], use_container_width=True)
+            st.caption(f"❤️HP:{p1['hp']} ⚔️ATK:{p1['atk']} ⚡SPD:{p1['spd']}")
+
+        with b_col2:
+            # 被りを防ぐためデフォルトの初期位置をズラす（2体以上いる場合）
+            default_p2 = 1 if len(chimera_options) > 1 else 0
+            p2_idx = st.selectbox("🔵 プレイヤー2 (後攻側)", range(len(chimera_options)), format_func=lambda x: chimera_options[x], index=default_p2)
+            p2 = st.session_state.chimera_list[p2_idx]
+            if os.path.exists(p2["img"]):
+                st.image(p2["img"], use_container_width=True)
+            st.caption(f"❤️HP:{p2['hp']} ⚔️ATK:{p2['atk']} ⚡SPD:{p2['spd']}")
+
+        st.write("---")
+        
+        # 💥 バトル開始ボタン
+        if st.button("⚔️ デスマッチ、戦闘開始！！ ⚔️", use_container_width=True, type="primary"):
+            st.subheader("🎬 ライブ戦闘ログ")
+            
+            # バトル用の一時ステータス（HP）をセット
+            hp1, hp2 = p1["hp"], p2["hp"]
+            
+            # プレースホルダー（文字がリアルタイムに追記されていく領域）を作成
+            log_placeholder = st.empty()
+            battle_log = f"### ⚔️ {p1['name']} VS {p2['name']} ⚔️\n\n"
+            log_placeholder.markdown(battle_log)
+            time.sleep(1.0)
+            
+            # 先制判定（すばやさが高い方がファーストアタッカー）
+            if p1["spd"] >= p2["spd"]:
+                attacker, defender = p1, p2
+                att_hp, def_hp = hp1, hp2
+                p1_turn = True
+            else:
+                attacker, defender = p2, p1
+                att_hp, def_hp = hp2, hp1
+                p1_turn = False
+                
+            battle_log += f"⚡ すばやさ判定：**{attacker['name']}** が先手を取った！\n\n---\n"
+            log_placeholder.markdown(battle_log)
+            time.sleep(1.0)
+
+            # 戦闘メインループ（最大20ターン）
+            turn = 1
+            while att_hp > 0 and def_hp > 0 and turn <= 20:
+                battle_log += f"**【ターン {turn}】**\n"
+                
+                # 🎲 スキル発動判定（35%の確率で継承スキルが炸裂）
+                if random.random() < 0.35:
+                    activated_skill = random.choice(attacker["skills"])
+                    damage = int(attacker["atk"] * random.uniform(1.3, 1.8))  # スキルは1.3〜1.8倍ダメ
+                    battle_log += f"🌟 {attacker['name']}のスキル **『{activated_skill}』** が発動！！\n"
+                else:
+                    # 通常攻撃
+                    damage = int(attacker["atk"] * random.uniform(0.8, 1.2))
+                    
+                def_hp -= damage
+                if def_hp < 0:
+                    def_hp = 0
+                    
+                battle_log += f"💥 {attacker['name']} の攻撃！ {defender['name']} に **{damage}** のダメージ！\n"
+                battle_log += f"🍏 {defender['name']} の残りHP: **{def_hp}**\n\n"
+                
+                log_placeholder.markdown(battle_log)
+                time.sleep(1.2)  # 🎬 動画映えポイント：絶妙なウェイトを入れる
+                
+                # 攻守交替
+                if def_hp <= 0:
+                    break
+                
+                attacker, defender = defender, attacker
+                att_hp, def_hp = def_hp, att_hp
+                p1_turn = not p1_turn
+                turn += 1
+
+            # 🏁 決着
+            battle_log += "---\n### 🏆 試合終了 🏆\n"
+            if def_hp <= 0:
+                battle_log += f"🎉 勝者：**{attacker['name']}** の圧倒的勝利！！\n"
+            else:
+                battle_log += "⏳ 20ターンが経過した…！ 引き分け！\n"
+                
+            log_placeholder.markdown(battle_log)
