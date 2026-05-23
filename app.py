@@ -112,4 +112,4 @@ if st.session_state.chimera_created:
     m_col2.metric("⚔️ 攻撃力", st.session_state.c_atk)
     m_col3.metric("⚡ すばやさ", st.session_state.c_spd)
     
-    st.blockquote(st.session_state.c_desc)
+    st.markdown(f"> {st.session_state.c_desc}")
