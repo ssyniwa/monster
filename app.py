@@ -43,7 +43,7 @@ BASE_MONSTERS = {
         "skills": ["狐火", "幻術の舞"]
     },
     "古代の聖女": {
-        "hp": 180, "atk": 50, "spd": 60, "img_key": "saint", 
+        "hp": 180, "atk": 50, "spd": 60, "img_key": "rumi", 
         "desc": "癒しの力を持つ聖女。防御力が高い。",
         "skills": ["ヒーリングライト", "聖なる盾"]
     },
